@@ -95,10 +95,10 @@ Now configure minio as follows:
 - Login to minio at `http://localhost:9000`
 - If it's your first time logging in it shows the Buckets view, if not then click on `Buckets`
 - Click `Create Bucket +`
-    - Bucket Name: `ts-datalake`
+    - Bucket Name: `tools-datalake`
     - Click `Create Bucket`
 - Click `Create Bucket +`
-    - Bucket Name: `ts-datalake-users`
+    - Bucket Name: `tools-datalake-users`
     - Click `Create Bucket`
 - Click `Users`
     - Click `Create User +`
@@ -128,15 +128,15 @@ Now configure minio as follows:
                 "s3:*"
             ],
             "Resource": [
-                "arn:aws:s3:::ts-datalake",
-                "arn:aws:s3:::ts-datalake/*"
+                "arn:aws:s3:::tools-datalake",
+                "arn:aws:s3:::tools-datalake/*"
             ]
         }
     ]
 }
 ```
-                - Name `ts-datalake-write`
-                - Description `Write access to the ts-datalake`
+                - Name `tools-datalake-write`
+                - Description `Write access to the tools-datalake`
                 - Click `Create`
                 - Capture the `Access Key` and `Secret Key` to use later on (I put it in my .env file as `DATALAKE_WRITE_ACCESS_KEY` and `DATALAKE_WRITE_SECRET_KEY`
                 - Click the `X` in the top right
@@ -157,15 +157,15 @@ Now configure minio as follows:
                 "s3:GetObject"
             ],
             "Resource": [
-                "arn:aws:s3:::ts-datalake",
-                "arn:aws:s3:::ts-datalake/*"
+                "arn:aws:s3:::tools-datalake",
+                "arn:aws:s3:::tools-datalake/*"
             ]
         }
     ]
 }
 ```
-                - Name `ts-datalake`
-                - Description `Read access to the ts-datalake`
+                - Name `tools-datalake`
+                - Description `Read access to the tools-datalake`
                 - Click `Create`
                 - Capture the `Access Key` and `Secret Key` to use later on (I put it in my .env file as `DATALAKE_READ_ACCESS_KEY` and `DATALAKE_READ_SECRET_KEY`
                 - Click the `X` in the top right
@@ -180,6 +180,7 @@ windows binary but setting up wsl is pretty straightforward (and beyond the scop
 turn up decent instructions).  I'll assume a bash shell is available at this point:
 
 ```
+$ mkdir -p .local/
 $ cd .local
 $ mkdir tls-config && cd tls-config
 $ openssl req -x509 -sha512 -days 365 -nodes -newkey rsa:4096 -subj "/CN=localhost/C=CA/L=Chatham" -keyout rootCA.key -out rootCA.crt
@@ -269,6 +270,10 @@ Since vault has first launched it will need to have the unseal key(s) setup, and
 - To login as `root` copy the `Initial root token` value and paste it into the `Token` prompt.
 
 Now you're in to vault as root, the rest of the config will be done from the cli using the vault cli program.  Configure vault as follows:
+
+```
+$ 
+```
 
 ## All Done
 Now that evertyhing is complete you can start everything up from here on out with:
