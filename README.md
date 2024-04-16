@@ -92,17 +92,183 @@ You now have keycloak setup for OIDC with minio if you so choose to use it that 
 Launch the rest of the containers, we'll configure minio next: `docker compose up -d minio1 minio2 minio3 minio4 nginx`.  Go to the minio console and login with the admin credentials found in MINIO_ROOT_USER and MINIO_ROOT_PASSWORD found in your .env file.  You could setup minio to work directly with keycloak but for the purpose of what I'm working on this is not a requirement - s3 storage is actually separate from the auth and auth tool...
 
 Now configure minio as follows:
+- Login to minio at `http://localhost:9000`
+- If it's your first time logging in it shows the Buckets view, if not then click on `Buckets`
+- Click `Create Bucket +`
+    - Bucket Name: `ts-datalake`
+    - Click `Create Bucket`
+- Click `Create Bucket +`
+    - Bucket Name: `ts-datalake-users`
+    - Click `Create Bucket`
+- Click `Users`
+    - Click `Create User +`
+        - User Name: `datalake_read`
+        - Click the checkbox beside `readonly`
+        - Click `Save`
+    - Click `Create User +`
+        - User Name: `datalake_write`
+        - Click the checkbox beside `readonly` and `readwrite`
+        - Click `Save`
+    - Click `Create User +`
+        - User Name: `datalake_users_write`
+        - Click the checkbox beside `readonly` and `readwrite`
+        - Click `Save`
+    - Click on `datalake_write`
+        - Click on the `Service Accounts` tab
+            - Click `Create Access Key +`
+                - Turn Restrict beyond user policy to `ON`
+                - Add in the following block:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::ts-datalake",
+                "arn:aws:s3:::ts-datalake/*"
+            ]
+        }
+    ]
+}
+```
+                - Name `ts-datalake-write`
+                - Description `Write access to the ts-datalake`
+                - Click `Create`
+                - Capture the `Access Key` and `Secret Key` to use later on (I put it in my .env file as `DATALAKE_WRITE_ACCESS_KEY` and `DATALAKE_WRITE_SECRET_KEY`
+                - Click the `X` in the top right
+- Click `Users`
+    - Click on `datalake_read`
+        - Click on the `Service Accounts` tab
+            - Click `Create Access Key +`
+                - Turn Restrict beyond user policy to `ON`
+                - Add in the following block:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketLocation",
+                "s3:GetObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::ts-datalake",
+                "arn:aws:s3:::ts-datalake/*"
+            ]
+        }
+    ]
+}
+```
+                - Name `ts-datalake`
+                - Description `Read access to the ts-datalake`
+                - Click `Create`
+                - Capture the `Access Key` and `Secret Key` to use later on (I put it in my .env file as `DATALAKE_READ_ACCESS_KEY` and `DATALAKE_READ_SECRET_KEY`
+                - Click the `X` in the top right
+
 
 ## Configure Vault
+
+Vault needs TLS configured and it's as easy as creating some self-signed certificates.  To do so follow these steps and for reference you can always visit [devopscube.com](https://devopscube.com/create-self-signed-certificates-openssl).
+
+These instructions will work in Linux or in WSL for windows, really anywhere that openssl is available to run.  There likely is a
+windows binary but setting up wsl is pretty straightforward (and beyond the scope of this document but a quick google search will
+turn up decent instructions).  I'll assume a bash shell is available at this point:
+
+```
+$ cd .local
+$ mkdir tls-config && cd tls-config
+$ openssl req -x509 -sha512 -days 365 -nodes -newkey rsa:4096 -subj "/CN=localhost/C=CA/L=Chatham" -keyout rootCA.key -out rootCA.crt
+$ openssl genrsa -out vault.key 4096
+$ cat > csr.conf <<EOF
+[ req ]
+default_bits = 4096
+prompt = no
+default_md = sha512
+req_extensions = req_ext
+distinguished_name = dn
+
+[ dn ]
+C = Country Code (US / CA / etc)
+ST = State or Province
+L = City
+O = Organization
+OU = Organization Unit
+CN = localhost
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+
+EOF
+$ openssl req -new -key vault.key -out vault.csr -config csr.conf
+$ cat > cert.conf <<EOF
+
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+
+EOF
+$ openssl x509 -req -in vault.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out vault.crt -days 365 -sha512 -extfile cert.conf
+$ cp rootCA.crt ../vault/config/tls/ca.crt
+$ cp vault.key vault.crt ../vault/config/tls/
+$ cd ../vault/config
+$ cat > config.json <<EOF
+{
+  "listener": {
+    "tcp": {
+      "address": "0.0.0.0:8200",
+      "tls_cert_file": "/vault/config/tls/vault.crt",
+      "tls_key_file": "/vault/config/tls/vault.key",
+      "tls_client_ca_file": "/vault/config/tls/ca.crt",
+      "max_request_size": "-1",
+      "max_request_duration": "10m"
+    }
+  },
+  "backend": {
+    "file": {
+      "path": "/vault/data"
+     }
+  },
+  "default_lease_ttl": "168h",
+  "max_lease_ttl": "720h",
+  "max_ttl": "12h",
+  "api_addr": "https://0.0.0.0:8200",
+  "disable_mlock": true,
+  "ui": true
+}
+
+EOF
+
+```
+
 First shut everything down that has been configured, we'll focus just on vault to avoid all the logs that show up for all the services.  To do this run the following commands:
 - `docker compose down -v`
 - `docker compose up -d vault`
 
-Since vault has first launched it will need to have the unseal key(s) setup, and this is done by going to `https://localhost:8200`.  Follow the prompts, I setup a single unseal key since this is just for dev purposes.
+Since vault has first launched it will need to have the unseal key(s) setup, and this is done by going to `https://localhost:8200`.  Follow the prompts:
+- Key shares: `1`
+- Key threshold: `1`
+- Click `Initialize`
+- Copy `Initial root token` somewhere safe, this is a dev instance so don't worry about it getting into the wrong hands, just store it somewhere you can find it again
+- Copy `Key 1` somewhere safe, this is a dev instance so don't worry about it getting into the wrong hands, just store it somewhere you can find it again
+- Click `Continue to Unseal`
+- Copy and paste (or type) the `Key 1` value (that you saved somewhere safe) into the `Unseal Key Portion` text field
+- Click `Unseal`
+- To login as `root` copy the `Initial root token` value and paste it into the `Token` prompt.
 
-Once into vault configure the login methods, I setup OIDC with keycloak and I configure a couple key-value stores.  Vault will be used to hold the s3 keys in a secure manner.  For my tests I will use it to provide the credentials to aws-s3-reverse-proxy.
-
-Configure vault as follows:
+Now you're in to vault as root, the rest of the config will be done from the cli using the vault cli program.  Configure vault as follows:
 
 ## All Done
 Now that evertyhing is complete you can start everything up from here on out with:
