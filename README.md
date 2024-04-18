@@ -1,3 +1,24 @@
+# How Does This Work
+This particular project is a set of common services found in an enterprise:
+
+- Auth / Auth (with OIDC) = KeyCloak
+- Postgres = Database for KeyCloak application data
+- S3 Buckets = Minio
+- Nginx = Load Balancer for Minio
+- Hashicorp Vault = Secrets Management
+
+All of this is setup and configured together in order to test out using a reverse s3 proxy to enable enhanced auditing and secrets fetching
+for users.  The goal is to have a reverse proxy that will grant users access based on groups they belong to in Keycloak using s3 access and
+secret tokens stored in Hashicorp Vault.
+
+Docker compose was selected to allow for the most portability in setting up the environment.  All containers are given a hostname to make
+network communication as easy as possible.  In order to connect to the minio s3 backend nginx fronts the small demo cluster of nodes with the
+nginx.conf setting up the reverse proxying to that set of services.
+
+All data is stored externally from the containers through external file stores and/or mounting directories directly into the containers.  No
+data should be written into the container filesystem.
+
+
 # General Config
 
 Some of these settings would be bad for a production server, shortcuts are used here when they are unimportant for dev purposes since the server contains fake data and is only intended to be used for development.  **DO NOT USE ANY OF THIS SETUP FOR PRODUCTION WITHOUT GIVING PROPER SCRUTINY**.
