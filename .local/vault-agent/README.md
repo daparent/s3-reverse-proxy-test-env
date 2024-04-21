@@ -67,8 +67,8 @@ token_max_ttl=15m
 ## Create tokens
 - The s3 token unwrapper tokens that will go into the vault-agent, the vault-agent should take care of renewing the generated token from them. This token will be unwrapped but will only have the ability to wrap the secret-id of the s3-reverse-proxy approle.  The vault-agent will write out the wrapped version to disk for the s3-reverse-proxy to read in.
 ```
-$ export TOKEN_WRAPPER_ROLE_ID=$(vault read auth/approle/role/s3-reverse-proxy-token-wrapper/role-id | jq -r '.data.role_id')
-$ export TOKEN_WRAPPER_SECRET_ID=$(vault write -f auth/approle/role/s3-reverse-proxy-token-wrapper/secret-id | jq -r '.data.secret_id')
+$ export TOKEN_WRAPPER_ROLE_ID=$(vault read -format=json auth/approle/role/s3-reverse-proxy-token-wrapper/role-id | jq -r '.data.role_id')
+$ export TOKEN_WRAPPER_SECRET_ID=$(vault write -format=json -f auth/approle/role/s3-reverse-proxy-token-wrapper/secret-id | jq -r '.data.secret_id')
 ```
 
 - The token for validating and unwrapping the s3-reverse-proxy secret-id.  This will be given to the s3-reverse-proxy app and will have to be renewed regularly.  Having a ttl of 72 hours and renewing every hour (with an error / alert on failure) should cover off long weekends where things go wrong.  All this token can do is unwrap a wrapped token, nothing else.
