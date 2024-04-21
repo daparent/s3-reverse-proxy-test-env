@@ -1,0 +1,26 @@
+{
+    "datalake_write": {
+        {{ with secret "kv/s3/data/datalake_write" }}
+        "accessKey": "{{ .Data.data.accessKey }}",
+        "keyid": "{{ .Data.data.keyid }}"
+        {{ end }}
+    },
+    "datalake_read": {
+        {{ with secret "kv/s3/data/datalake_read" }}
+        "accessKey": "{{ .Data.data.accessKey }}",
+        "keyid": "{{ .Data.data.keyid }}"
+        {{ end }}
+    },
+    "datalake_users": {
+        {{ with secret "kv/s3/data/datalake_users" }}
+        "accessKey": "{{ .Data.data.accessKey }}",
+        "keyid": "{{ .Data.data.keyid }}"
+        {{ end }}
+    },
+    "datalake_admin": {
+        {{ with secret "kv/s3/data/datalake_admin" }}
+        "accessKey": "{{ .Data.data.accessKey }}",
+        "keyid": "{{ .Data.data.keyid }}"
+        {{ end }}
+    }
+}

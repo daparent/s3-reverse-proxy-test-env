@@ -2,3 +2,4 @@
 .local/vault
 .local/tls-config
 .local/creds
+.local/vault-agent/*.id
