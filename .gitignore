@@ -3,4 +3,4 @@
 .local/tls-config
 .local/creds
 .local/vault-agent/*.id
-.local/vault-agent/token*
+.local/vault-agent/*token*

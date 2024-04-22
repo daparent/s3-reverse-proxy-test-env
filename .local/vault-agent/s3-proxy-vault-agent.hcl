@@ -10,17 +10,16 @@ auto_auth {
     type = "approle"
 
     config = {
-      role_id_file_path = "/vault-agent/s3-proxy-token-wrapper-role.id"
-      secret_id_file_path = "/vault-agent/s3-proxy-token-wrapper-secret.id"
+      role_id_file_path = "/vault-agent/s3-reverse-proxy-role.id"
+      secret_id_file_path = "/vault-agent/s3-reverse-proxy-secret.id"
       remove_secret_id_file_after_reading = false
     }
   }
 
   sink {
     type = "file"
-    wrap_ttl = "5m"
     config = {
-      path = "/vault-agent/token-wrapped"
+      path = "/vault-agent/s3-reverse-proxy.token"
     }
   }
 }

@@ -26,6 +26,8 @@ path "auth/approle/role/s3-reverse-proxy/secret-id" {
   	capabilities = ["read", "update"]
 }
 ```
+
+### If cred wrapping is enabled then the following may be required as well:
 validate-and-unwrap:
 ```
 # Allow a token to unwrap a response-wrapping token. This is a convenience to
@@ -44,6 +46,20 @@ path "auth/token/renew-self" {
 ```
 
 ## Approle setup
+
+- Create an approle for retrieving s3-proxy credentials
+```
+$ vault write auth/approle/role/s3-reverse-proxy \
+secret_id_ttl=0 \
+token_num_uses=0 \
+token_policies=default,s3-datalake-creds \
+secret_id_num_uses=0 \
+token_ttl=1h \
+token_max_ttl=1h \
+token_explicit_max_ttl=0
+```
+
+### If cred wrapping is enabled then the following may be required as well:
 - Create approle for a token unwrapper
 ```
 $ vault write -f auth/approle/role/s3-reverse-proxy-token-wrapper \
@@ -53,17 +69,22 @@ token_max_ttl=15m \
 secret_id_ttl=15m \
 secret_id_num_uses=1
 ```
-- Create an approle for retrieving s3-proxy credentials
+
+
+## Create role-id and secret-id for vault-agent
 ```
-$ vault write auth/approle/role/s3-reverse-proxy \
-secret_id_ttl=10m \
-token_num_uses=0 \
-token_policies=default,s3-datalake-creds \
-secret_id_num_uses=2 \
-token_ttl=5m \
-token_max_ttl=15m
+$ S3_REVERSE_PROXY_ROLE_ID=$(vault read -format=json auth/approle/role/s3-reverse-proxy/role-id | jq -r '.data.role_id')
+$ S3_REVERSE_PROXY_SECRET_ID=$(vault write -f -format=json auth/approle/role/s3-reverse-proxy/secret-id | jq -r '.data.secret_id')
 ```
 
+## Testing
+- To test out the token it's a simple as logging in with the role_id and secret_id
+```
+$ NEW_TOKEN=$(vault write /auth/approle/login role_id=${S3_REVERSE_PROXY_ROLE_ID} secret_id=${S3_REVERSE_PROXY_SECRET_ID})
+$ VAULT_TOKEN=${NEW_TOKEN} vault kv get kv/s3/datalake_read
+```
+
+### For wrapping tokens the following may be necessary
 ## Create tokens
 - The s3 token unwrapper tokens that will go into the vault-agent, the vault-agent should take care of renewing the generated token from them. This token will be unwrapped but will only have the ability to wrap the secret-id of the s3-reverse-proxy approle.  The vault-agent will write out the wrapped version to disk for the s3-reverse-proxy to read in.
 ```
