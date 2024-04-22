@@ -20,6 +20,7 @@ auto_auth {
     type = "file"
     config = {
       path = "/vault-agent/s3-reverse-proxy.token"
+      mode = 0644
     }
   }
 }

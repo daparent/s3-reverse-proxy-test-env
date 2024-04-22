@@ -127,29 +127,29 @@ services:
     volumes:
       - ./.local/vault-agent:/vault-agent:rw
     environment:
-      VAULT_ADDR: "https://vault:8200"    
+      VAULT_ADDR: "https://vault:8200"
     entrypoint: "vault agent -log-level debug -config=/vault-agent/s3-proxy-vault-agent.hcl"
     depends_on:
       - vault
+  aws-s3-reverse-proxy:
+    image: danparent/aws-s3-reverse-proxy:latest
+    container_name: aws-s3-reverse-proxy
+    hostname: as3rp
+    restart: on-failure
+    ports:
+      - 8099:8099
+    environment:
+      ALLOWED_SOURCE_SUBNET: "0.0.0.0/0"
+      ALLOWED_ENDPOINT: "localhost:8099"
+      UPSTREAM_ENDPOINT: "nginx:9000"
+      UPSTREAM_INSECURE: "true"
+      VAULT_TOKEN_LOCATION: /proxy/s3-reverse-proxy.token
+      AWS_REGION: ${AWS_REGION}
+    volumes:
+      - ./.local/vault-agent/s3-reverse-proxy.token:/proxy/s3-reverse-proxy.token:ro
+    depends_on:
+      - nginx
 
-  # aws-s3-reverse-proxy:
-  #   image: danparent/aws-s3-reverse-proxy:latest
-  #   container_name: aws-s3-reverse-proxy
-  #   hostname: as3rp
-  #   restart: on-failure
-  #   ports:
-  #     - 8099:8099
-  #   environment:
-  #     ALLOWED_SOURCE_SUBNET: "0.0.0.0/0"
-  #     ALLOWED_ENDPOINT: "localhost:8099"
-  #     UPSTREAM_ENDPOINT: "nginx:9000"
-  #     UPSTREAM_INSECURE: "true"
-  #     WRITE_DATALAKE_CREDENTIALS: ${WRITE_DATALAKE_CREDENTIALS}
-  #     AWS_REGION: ${AWS_REGION}
-  #   volumes:
-  #     - ./.local/vault-agent:/vault-agent:ro
-  #   depends_on:
-  #     - nginx
 volumes:
   data1-1:
     external: true
