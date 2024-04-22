@@ -15,6 +15,15 @@ Create the token
 8. Get the s3 bucket secret
 
 ## Policies
+s3-datalake-creds:
+```
+# Allow tokens to look up their own properties
+path "kv/s3/*" {
+    capabilities = ["read", "list"]
+}
+```
+
+### If cred wrapping is enabled then the following may be required as well:
 read-and-wrap-s3-reverse-proxy-secret-id:
 ```
 # Allow a token to wrap arbitrary values in a response-wrapping token
@@ -27,7 +36,6 @@ path "auth/approle/role/s3-reverse-proxy/secret-id" {
 }
 ```
 
-### If cred wrapping is enabled then the following may be required as well:
 validate-and-unwrap:
 ```
 # Allow a token to unwrap a response-wrapping token. This is a convenience to
